@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login</title>
+</head>
+<body>
+  <h1>Page de connexion</h1>
+  <form id="login-form">
+    <label for="username">Nom d'utilisateur : </label><br>
+    <input type="text" id="username" name="username"><br>
+    <label for="password">Mot de passe : </label><br>
+    <input type="password" id="password" name="password"><br><br>
+    <button type="submit">Se connecter</button>
+  </form>
+  <p id=helper></p>
+  <p>Pas encore de compte ? <a href="register.html">Inscrivez-vous !</a></p>
+  <script>
+    // checking if an user is already logged in and therefore should be redirected to /home
+    if (window.localStorage.getItem('token') != null) {
+      location.href = "home.html";
+    }
+
+    const form = document.getElementById('login-form');
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      fetch('http://localhost:8080/api/login/tokenFromUser', {
+        method: 'POST',
+        body: JSON.stringify({"username": username, "password": password }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+      })
+      .then((response) => response.text())
+      .then((token) => {
+        if (token == "" || token.charAt(0) == '{') { // error in login
+          document.getElementById("helper").innerHTML = "Identifiants incorrects !";
+        } else {
+          window.localStorage.setItem('token', token);
+          location.href = "home.html";
+        }
+      });
+    });
+  </script>
+</body>
+</html>

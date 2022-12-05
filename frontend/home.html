@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login</title>
+</head>
+<body>
+  <h1>Page d'accueil</h1>
+  <h3 id="user_greeting"></h3>
+  <p id="user_balance"></p>
+  <button id="logout-button">Se déconnecter</button>
+  <script>
+    // checking if no user is logged in and if so redirected to /login
+    if (window.localStorage.getItem('token') == null) {
+      location.href = "login.html";
+    }
+
+    fetch(`http://localhost:8080/api/balance?token=${window.localStorage.getItem('token')}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      },
+    })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data == null) {
+        window.localStorage.removeItem('token');
+        location.href = "login.html";
+        return;
+      } else {
+        document.getElementById("user_greeting").innerHTML = "Bienvenue " + data.username + " !";
+        document.getElementById("user_balance").innerHTML = "Votre solde : $" + data.balance;
+      }
+
+    });
+
+    const button = document.getElementById('logout-button');
+    button.addEventListener('click', () => {
+      window.localStorage.removeItem('token');
+      location.href = "login.html";
+    });
+
+  </script>
+</body>
+</html>
