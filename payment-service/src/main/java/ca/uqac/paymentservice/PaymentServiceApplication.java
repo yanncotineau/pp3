@@ -14,9 +14,4 @@ public class PaymentServiceApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(PaymentServiceApplication.class, args);
 	}
-
-	@GetMapping("/api/payment")
-	public String hello() {
-		return "payment service here";
-	}
 }

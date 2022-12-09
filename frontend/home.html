@@ -4,11 +4,40 @@
   <title>Login</title>
 </head>
 <body>
+  <button id="logout-button">Se déconnecter</button>
   <h1>Page d'accueil</h1>
   <h3 id="user_greeting"></h3>
-  <p id="user_balance"></p>
-  <button id="logout-button">Se déconnecter</button>
+  <p>Votre solde : <span id="user_balance">-</span></p>
+  <form id="payment-form">
+    <label for="amount">Amount:</label><br>
+    <input type="number" id="amount" name="amount"><br>
+    <label for="receiver">Receiver:</label><br>
+    <input type="text" id="receiver" name="receiver"><br><br>
+    <input type="submit" value="Submit">
+  </form>
+  <button id="benchmark-button">Lancer un benchmark (10s)</button>
+  <h3 id="benchmark-result"></h3>
+
   <script>
+
+    var changeBalanceText = true;
+
+    function makePayment(receiver, amount) {
+      fetch('http://localhost:8080/api/payment', {
+        method: 'POST',
+        body: JSON.stringify({"token": window.localStorage.getItem('token'), "receiver": receiver, "amount": amount }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+      })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.balance !== undefined && changeBalanceText)
+          document.getElementById("user_balance").innerHTML = data.balance;
+      });
+    }
+
     // checking if no user is logged in and if so redirected to /login
     if (window.localStorage.getItem('token') == null) {
       location.href = "login.html";
@@ -29,7 +58,7 @@
         return;
       } else {
         document.getElementById("user_greeting").innerHTML = "Bienvenue " + data.username + " !";
-        document.getElementById("user_balance").innerHTML = "Votre solde : $" + data.balance;
+        document.getElementById("user_balance").innerHTML = data.balance;
       }
 
     });
@@ -38,6 +67,45 @@
     button.addEventListener('click', () => {
       window.localStorage.removeItem('token');
       location.href = "login.html";
+    });
+
+    const paymentForm = document.getElementById('payment-form');
+    paymentForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const receiver = document.getElementById('receiver').value;
+      const amount = document.getElementById('amount').value;
+      makePayment(receiver, amount);
+    });
+
+    const benchmarkButton = document.getElementById('benchmark-button');
+    benchmarkButton.addEventListener('click', () => {
+      changeBalanceText = true;
+
+      let initialBalance = parseInt(document.getElementById('user_balance').innerHTML);
+
+      event.preventDefault();
+      const receiver = document.getElementById('receiver').value;
+
+      let paymentLoop = setInterval(() => {
+        makePayment(receiver, 1);
+      }, 0);
+
+      setTimeout(() => {
+        clearInterval(paymentLoop);
+        changeBalanceText = false;
+
+        let finalBalance = parseInt(document.getElementById('user_balance').innerHTML);
+        let requestsNumber = initialBalance - finalBalance;
+        console.log(initialBalance);
+
+        document.getElementById("benchmark-result").innerHTML = `
+          nombre de requêtes : ${requestsNumber}\n
+          temps écoulé : 10s\n
+          requêtes par seconde : ${requestsNumber / 10}
+          `;
+
+      }, 10000);
+
     });
 
   </script>
