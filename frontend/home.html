@@ -6,23 +6,28 @@
 <body>
   <button id="logout-button">Se déconnecter</button>
   <h1>Page d'accueil</h1>
-  <h3 id="user_greeting"></h3>
-  <p>Votre solde : <span id="user_balance">-</span></p>
+  <h2 id="user_greeting"></h2>
+  <p style="color:green;"><b>Votre solde : $<span id="user_balance">-</span></b></p>
   <form id="payment-form">
-    <label for="amount">Amount:</label><br>
+    <label for="amount">Montant (en $):</label><br>
     <input type="number" id="amount" name="amount"><br>
-    <label for="receiver">Receiver:</label><br>
+    <label for="receiver">Destinataire :</label><br>
     <input type="text" id="receiver" name="receiver"><br><br>
     <input type="submit" value="Submit">
+  </form><br>
+  <form id="benchmark-form">
+    <label for="amount">Durée du benchmark (en s):</label><br>
+    <input type="number" id="benchmark-length" name="benchmark-length" value="10"><br><br>
+    <input id="benchmark-button" type="submit" value="Lancer le benchmark">
   </form>
-  <button id="benchmark-button">Lancer un benchmark (10s)</button>
   <h3 id="benchmark-result"></h3>
 
   <script>
 
-    var changeBalanceText = true;
+    var userBalanceElement = document.getElementById("user_balance");
+    var benchmarkCurrentlyRunning = true, lastKnownBalance = 0;
 
-    function makePayment(receiver, amount) {
+    function makePayment(receiver, amount, updateDisplay) {
       fetch('http://localhost:8080/api/payment', {
         method: 'POST',
         body: JSON.stringify({"token": window.localStorage.getItem('token'), "receiver": receiver, "amount": amount }),
@@ -33,8 +38,12 @@
       })
       .then((response) => response.json())
       .then((data) => {
-        if (data.balance !== undefined && changeBalanceText)
-          document.getElementById("user_balance").innerHTML = data.balance;
+        if (updateDisplay)
+          userBalanceElement.innerHTML = data.balance;
+        if (benchmarkCurrentlyRunning)
+          lastKnownBalance = data.balance;
+      })
+      .catch((err) => {
       });
     }
 
@@ -58,7 +67,7 @@
         return;
       } else {
         document.getElementById("user_greeting").innerHTML = "Bienvenue " + data.username + " !";
-        document.getElementById("user_balance").innerHTML = data.balance;
+        userBalanceElement.innerHTML = data.balance;
       }
 
     });
@@ -74,37 +83,52 @@
       event.preventDefault();
       const receiver = document.getElementById('receiver').value;
       const amount = document.getElementById('amount').value;
-      makePayment(receiver, amount);
+      makePayment(receiver, amount, true);
     });
 
+    const benchmarkForm = document.getElementById('benchmark-form');
     const benchmarkButton = document.getElementById('benchmark-button');
-    benchmarkButton.addEventListener('click', () => {
-      changeBalanceText = true;
-
-      let initialBalance = parseInt(document.getElementById('user_balance').innerHTML);
-
+    benchmarkForm.addEventListener('submit', (event) => {
       event.preventDefault();
       const receiver = document.getElementById('receiver').value;
+      const benchmarkLength = document.getElementById('benchmark-length').value;
+      benchmarkCurrentlyRunning = true;
+      benchmarkButton.disabled = true;
 
+      let initialBalance = parseInt(userBalanceElement.innerHTML);
+      lastKnownBalance = initialBalance;
+
+      // getting data loop
       let paymentLoop = setInterval(() => {
-        makePayment(receiver, 1);
+        makePayment(receiver, 1, false);
+        makePayment(receiver, 1, false);
+        makePayment(receiver, 1, false);
       }, 0);
 
+      // displaying data loop
+      let displayLoop = setInterval(() => {
+        userBalanceElement.innerHTML = lastKnownBalance;
+      }, 1000);
+
+      // ending benchmark loop
       setTimeout(() => {
         clearInterval(paymentLoop);
-        changeBalanceText = false;
+        clearInterval(displayLoop);
+        benchmarkCurrentlyRunning = false;
 
-        let finalBalance = parseInt(document.getElementById('user_balance').innerHTML);
-        let requestsNumber = initialBalance - finalBalance;
-        console.log(initialBalance);
+        userBalanceElement.innerHTML = lastKnownBalance;
+
+        let requestsNumber = initialBalance - lastKnownBalance;
+        //console.log(initialBalance);
 
         document.getElementById("benchmark-result").innerHTML = `
-          nombre de requêtes : ${requestsNumber}\n
-          temps écoulé : 10s\n
-          requêtes par seconde : ${requestsNumber / 10}
-          `;
+          Résultats du benchmark :<br>
+          &emsp;Temps écoulé : ${benchmarkLength}s<br>
+          &emsp;Nombre de requêtes effectuées : ${requestsNumber}<br>
+          &emsp;Requêtes par seconde : ${requestsNumber / benchmarkLength}`;
+        benchmarkButton.disabled = false;
 
-      }, 10000);
+      }, 1000 * benchmarkLength);
 
     });
 

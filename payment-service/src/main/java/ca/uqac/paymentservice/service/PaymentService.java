@@ -6,14 +6,19 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.WriteModel;
+import com.mongodb.client.model.UpdateOneModel;
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
+
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static com.mongodb.client.model.Filters.*;
@@ -60,6 +65,7 @@ public class PaymentService {
             if (users.find(eq("username", receiver)).first() == null) // receiver has to be a existing user
                 throw new Exception("invalid receiver");
 
+            /*
             // getting current balances
             long senderCurrentBalance = (long) users.find(eq("username", username)).first().get("balance");
             long receiverCurrentBalance = (long) users.find(eq("username", receiver)).first().get("balance");
@@ -69,14 +75,25 @@ public class PaymentService {
 
             // proceed to payment
             users.updateOne(eq("username", username), Updates.set("balance", senderCurrentBalance - amount));
-            users.updateOne(eq("username", receiver), Updates.set("balance", receiverCurrentBalance + amount));
+            users.updateOne(eq("username", receiver), Updates.set("balance", receiverCurrentBalance + amount));*/
 
-            // generating response JSON
-            Map<String, Object> map = new HashMap<String, Object>();
-            map.put("username", username);
-            map.put("balance", senderCurrentBalance - amount);
+            long senderCurrentBalance = users.find(eq("username", username)).first().getLong("balance");
+            if (amount > senderCurrentBalance) // cannot send more than sender has
+                throw new Exception("cannot pay more than we have");
+            else {
+                List<WriteModel<Document>> updates = new ArrayList<>();
+                updates.add(new UpdateOneModel<>(eq("username", receiver), new Document("$inc", new Document("balance", amount))));
+                updates.add(new UpdateOneModel<>(eq("username", username), new Document("$inc", new Document("balance", -amount))));
 
-            return map;
+                users.bulkWrite(updates);
+
+                // generating response JSON
+                Map<String, Object> map = new HashMap<String, Object>();
+                map.put("username", username);
+                map.put("balance", senderCurrentBalance - amount);
+
+                return map;
+            }
         } catch (Exception e) {
             e.printStackTrace();
             return new HashMap<String, Object>();
