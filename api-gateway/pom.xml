@@ -34,7 +34,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>ca.uqac.apigwateway.APIGatewayApplication</mainClass>
+                    <mainClass>ca.uqac.apigateway.APIGatewayApplication</mainClass>
                 </configuration>
             </plugin>
         </plugins>
