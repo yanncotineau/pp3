@@ -36,7 +36,7 @@ public class BalanceService {
                     .uri("http://login-service/api/login/userFromToken?token=" + token)
                     .retrieve().bodyToMono(String.class).block();
             System.out.println(username);
-            //String username = "obiwan2"; // testing purposes
+
 
             if (username.equals("")) { // could not get an user from the provided token
                 throw new Exception("invalid token");
